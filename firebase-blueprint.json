@@ -30,17 +30,6 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["authorId", "authorName", "name", "imageData", "downloads", "createdAt"]
-    },
-    "Notification": {
-      "title": "User Notification",
-      "description": "A notification sent to a user",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "message": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "message", "createdAt"]
     }
   },
   "firestore": {
@@ -51,10 +40,6 @@
     "/skins/{skinId}": {
       "schema": { "$ref": "#/entities/Skin" },
       "description": "Uploaded skins"
-    },
-    "/notifications/{notificationId}": {
-      "schema": { "$ref": "#/entities/Notification" },
-      "description": "User notifications"
     }
   }
 }
