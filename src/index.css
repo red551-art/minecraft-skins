@@ -1,0 +1,110 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+@theme {
+  --font-minecraft: "VT323", monospace;
+}
+
+:root {
+  --mc-green: #55FF55;
+  --mc-dark-green: #388E3C;
+  --mc-gray: #AAAAAA;
+  --mc-dark-gray: #3F3F3F;
+  --mc-black: #000000;
+  --mc-white: #FFFFFF;
+}
+
+html, body {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  font-family: var(--font-minecraft);
+  image-rendering: pixelated;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  font-family: inherit;
+}
+
+.mc-button {
+  background-color: #7c7c7c;
+  border: 2px solid #000000;
+  box-shadow: inset -2px -2px #3f3f3f, inset 2px 2px #dbdbdb;
+  padding: 8px 16px;
+  color: #ffffff;
+  text-shadow: 2px 2px #3f3f3f;
+  cursor: pointer;
+  transition: all 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.25rem;
+}
+
+.mc-button:hover {
+  background-color: #8c8c8c;
+  box-shadow: inset -2px -2px #4f4f4f, inset 2px 2px #ebebeb;
+}
+
+.mc-button:active {
+  box-shadow: inset 2px 2px #3f3f3f, inset -2px -2px #dbdbdb;
+  transform: translateY(2px);
+}
+
+.mc-button-green {
+  background-color: #55aa55;
+  box-shadow: inset -2px -2px #3d7a3d, inset 2px 2px #7fff7f;
+}
+
+.mc-button-green:hover {
+  background-color: #66bb66;
+}
+
+.mc-panel {
+  background-color: #c6c6c6;
+  border: 4px solid #000000;
+  box-shadow: inset -4px -4px #555555, inset 4px 4px #ffffff;
+  padding: 16px;
+  color: #3f3f3f;
+}
+
+.glitch-text {
+  text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff;
+  animation: glitch 0.3s infinite;
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.mc-input {
+  background-color: #000000;
+  border: 2px solid #555555;
+  color: #ffffff;
+  padding: 8px;
+  font-family: var(--font-minecraft);
+  font-size: 1.25rem;
+  outline: none;
+}
+
+.mc-input:focus {
+  border-color: #ffffff;
+}
+
+.pixel-border {
+  border: 4px solid #000000;
+  box-shadow: inset -4px -4px #3f3f3f, inset 4px 4px #dbdbdb;
+}
+
+/* Minecraft dirt pattern background */
+.bg-dirt {
+  background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+  background-color: #3d2b1f;
+}

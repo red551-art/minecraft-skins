@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "picture": { "type": "string" },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "favorites": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "Skin": {
+      "title": "Minecraft Skin",
+      "description": "A user-uploaded Minecraft skin",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "imageData": { "type": "string" },
+        "downloads": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorName", "name", "imageData", "downloads", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/skins/{skinId}": {
+      "schema": { "$ref": "#/entities/Skin" },
+      "description": "Uploaded skins"
+    }
+  }
+}

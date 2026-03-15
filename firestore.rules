@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - name: string (required, 1-50 chars)
+    //   - picture: string (optional)
+    //   - bio: string (optional, 0-500 chars)
+    //   - createdAt: timestamp (required, immutable)
+    //   - favorites: list (optional, max 1000 items)
+    //
+    // Collection: skins
+    // Document ID: {skinId}
+    // Fields:
+    //   - authorId: string (required, immutable)
+    //   - authorName: string (required, 1-50 chars)
+    //   - name: string (required, 1-100 chars)
+    //   - description: string (optional, 0-1000 chars)
+    //   - imageData: string (required, <1MB)
+    //   - downloads: number (required, incrementable)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorId;
+    }
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+    function isValidString(field, min, max) {
+      return request.resource.data[field] is string &&
+             request.resource.data[field].size() >= min &&
+             request.resource.data[field].size() <= max;
+    }
+
+    // Domain Validators
+    function isValidUser() {
+      return hasOnlyAllowedFields(['name', 'picture', 'bio', 'createdAt', 'favorites']) &&
+             isValidString('name', 1, 50) &&
+             (!('picture' in request.resource.data) || request.resource.data.picture is string) &&
+             (!('bio' in request.resource.data) || isValidString('bio', 0, 500)) &&
+             request.resource.data.createdAt is timestamp &&
+             (!('favorites' in request.resource.data) || (request.resource.data.favorites is list && request.resource.data.favorites.size() <= 1000));
+    }
+
+    function isValidSkin() {
+      return hasOnlyAllowedFields(['authorId', 'authorName', 'name', 'description', 'imageData', 'downloads', 'createdAt']) &&
+             request.resource.data.authorId == request.auth.uid &&
+             isValidString('authorName', 1, 50) &&
+             isValidString('name', 1, 100) &&
+             (!('description' in request.resource.data) || isValidString('description', 0, 1000)) &&
+             request.resource.data.imageData is string &&
+             request.resource.data.imageData.size() < 1000000 &&
+             request.resource.data.downloads is number &&
+             request.resource.data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId) && isValidUser();
+      allow update: if isOwner(userId) && isValidUser() && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /skins/{skinId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidSkin() && request.resource.data.downloads == 0;
+      allow update: if 
+        // Owner updating details
+        (isDocOwner() && isValidSkin() && 
+         request.resource.data.authorId == resource.data.authorId &&
+         request.resource.data.createdAt == resource.data.createdAt &&
+         request.resource.data.downloads == resource.data.downloads) 
+        || 
+        // Anyone incrementing downloads
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloads']) &&
+         request.resource.data.downloads == resource.data.downloads + 1);
+      allow delete: if isDocOwner();
+    }
+  }
+}
