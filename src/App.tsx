@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react';
-import { Search, Upload, Download, LogIn, LogOut, User, Loader2, ChevronLeft, Heart, Globe, Eye, EyeOff, Camera, FileText, Crop } from 'lucide-react';
+import { Search, Upload, Download, LogIn, LogOut, User, Loader2, ChevronLeft, Heart, Globe, Eye, EyeOff, Camera, FileText, Crop, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import SkinViewer from './components/SkinViewer';
 import { clsx, type ClassValue } from 'clsx';
@@ -167,6 +167,13 @@ interface UserData {
   favorites?: string[];
 }
 
+interface Notification {
+  id: string;
+  userId: string;
+  message: string;
+  createdAt: any;
+}
+
 const CLICK_SOUND = 'https://www.soundjay.com/buttons/sounds/button-3.mp3';
 
 const Logo = () => (
@@ -264,6 +271,8 @@ export default function App() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   const [showProfile, setShowProfile] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -317,6 +326,18 @@ export default function App() {
       unsubscribeSkins();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+    const q = query(collection(db, 'notifications'), where('userId', '==', user.id), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
+    });
+    return () => unsubscribe();
+  }, [user?.id]);
 
   const playClick = () => {
     if (audioRef.current) {
@@ -626,7 +647,7 @@ export default function App() {
     }
   };
 
-  const deleteSkin = async (id: string, skinName: string) => {
+  const deleteSkin = async (id: string, skinName: string, authorId: string) => {
     setConfirmModal({
       show: true,
       title: t.confirmDeleteTitle,
@@ -635,8 +656,21 @@ export default function App() {
         playClick();
         try {
           await deleteDoc(doc(db, 'skins', id));
+          
+          // If admin is deleting someone else's skin, send notification
+          if (auth.currentUser?.email === 'redskas5119@gmail.com' && authorId !== user?.id) {
+            await setDoc(doc(collection(db, 'notifications')), {
+              userId: authorId,
+              message: lang === 'ru' ? `Модерация не одобрила ваш скин: ${skinName}` : `Moderation did not approve your skin: ${skinName}`,
+              createdAt: serverTimestamp()
+            });
+          }
+
           setAllSkins(prev => prev.filter(s => s.id !== id));
-          if (selectedSkin?.id === id) setSelectedSkin(null);
+          if (selectedSkin?.id === id) {
+            setSelectedSkin(null);
+            setView('home');
+          }
           showToast('Skin deleted successfully');
         } catch (e) {
           handleFirestoreError(e, OperationType.DELETE, `skins/${id}`);
@@ -695,6 +729,57 @@ export default function App() {
 
           {user ? (
             <div className="flex items-center gap-2 md:gap-3">
+              <div className="relative">
+                <button 
+                  onClick={() => { playClick(); setShowNotifications(!showNotifications); }}
+                  className="mc-button p-2 min-w-[40px] h-10 shrink-0 relative"
+                >
+                  <Bell size={18} />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full pixel-border">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-72 mc-panel z-50 p-2 max-h-96 overflow-y-auto">
+                    <h3 className="text-lg font-bold uppercase mb-2 border-b border-black/20 pb-2">
+                      {lang === 'ru' ? 'Уведомления' : 'Notifications'}
+                    </h3>
+                    {notifications.length === 0 ? (
+                      <p className="text-sm text-mc-dark-gray text-center py-4">
+                        {lang === 'ru' ? 'Нет новых уведомлений' : 'No new notifications'}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {notifications.map(notif => (
+                          <div key={notif.id} className="bg-white/50 p-2 pixel-border text-sm relative group">
+                            <p className="text-black pr-6">{notif.message}</p>
+                            <p className="text-xs text-mc-dark-gray mt-1">
+                              {notif.createdAt?.toDate?.() ? notif.createdAt.toDate().toLocaleString() : ''}
+                            </p>
+                            <button 
+                              onClick={async () => {
+                                playClick();
+                                try {
+                                  await deleteDoc(doc(db, 'notifications', notif.id));
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                              className="absolute top-1 right-1 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              X
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button 
                 onClick={() => { playClick(); setShowProfile(true); }}
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -1274,6 +1359,17 @@ export default function App() {
                         {user?.favorites?.includes(selectedSkin.id) ? t.favorited : t.favorite}
                       </button>
                     </div>
+                    
+                    {auth.currentUser?.email === 'redskas5119@gmail.com' && (
+                      <div className="mt-4">
+                        <button 
+                          onClick={() => deleteSkin(selectedSkin.id, selectedSkin.name, selectedSkin.authorId)}
+                          className="mc-button w-full py-3 md:py-4 text-xl md:text-2xl uppercase bg-red-600"
+                        >
+                          {lang === 'ru' ? 'УДАЛИТЬ (АДМИН)' : 'DELETE (ADMIN)'}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Similar Skins */}
@@ -1431,7 +1527,7 @@ export default function App() {
                           {t.edit}
                         </button>
                         <button 
-                          onClick={() => deleteSkin(skin.id, skin.name)}
+                          onClick={() => deleteSkin(skin.id, skin.name, skin.authorId)}
                           className="mc-button flex-1 py-2 text-sm uppercase bg-red-600"
                         >
                           {t.delete}
